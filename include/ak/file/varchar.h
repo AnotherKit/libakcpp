@@ -6,6 +6,8 @@
 #include <compare>
 #include <string>
 
+#include "../base.h"
+
 namespace ak::file {
 /// a wrapper for const char * with utility functions and type conversions.
 template <int maxLength>
@@ -13,21 +15,21 @@ struct Varchar {
  private:
   template <int A>
   friend class Varchar;
-  char content[maxLength + 1];
+  char content[maxLength + 1]; // NOLINT(modernize-avoid-c-arrays): it's clear that we need to use C-style array here.
  public:
   Varchar () { content[0] = '\0'; }
   Varchar (const std::string &s) {
-    if (s.length() > maxLength) throw 999;
+    if (s.length() > maxLength) throw Overflow("Varchar length overflow");
     strcpy(content, s.c_str());
   }
   Varchar (const char *cstr) : Varchar(std::string(cstr)) {}
   template<int A>
   Varchar (const Varchar<A> &that) { *this = that; }
   operator std::string () const { return std::string(content); }
-  std::string str () const { return std::string(*this); }
+  [[nodiscard]] std::string str () const { return std::string(*this); }
   template <int A>
   Varchar operator= (const Varchar<A> &that) {
-    if (that.str().length() > maxLength) throw 999;
+    if (that.str().length() > maxLength) throw Overflow("Varchar length overflow");
     strcpy(content, that.content);
     return *this;
   }

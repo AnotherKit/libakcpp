@@ -19,7 +19,7 @@ struct Array {
  public:
   Array () = default;
   size_t length = 0;
-  T content[maxLength];
+  T content[maxLength]; // NOLINT(modernize-avoid-c-arrays): it's clear that we need to use C-style array here.
   size_t indexOf (const T &element) {
     for (size_t i = 0; i < length; ++i) if (element == content[i]) return i;
     throw NotFound("Array::indexOf: element not found");

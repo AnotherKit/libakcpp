@@ -1,0 +1,4 @@
+---
+Checks: 'clang-diagnostic-*,clang-analyzer-*,bugprone-*,modernize-*,-modernize-deprecated-headers,-modernize-use-trailing-return-type,performance-*,readability-*,-readability-braces-around-statements,-readability-identifier-length,-readability-isolate-declaration'
+...
+

@@ -25,7 +25,7 @@ namespace ak::file {
  *   Sector size (logical/physical): 512 bytes / 512 bytes
  *   I/O size (minimum/optimal): 512 bytes / 512 bytes
 */
-template <typename KeyType, typename ValueType, size_t szNode = 512>
+template <typename KeyType, typename ValueType, size_t szNode = 512> // NOLINT(readability-magic-numbers): explained above.
 class BPTree {
  private:
   File<szNode> file_;
@@ -43,7 +43,7 @@ class BPTree {
     }
   };
   /// nodes are referenced by its numerical id.
-  typedef unsigned int NodeId;
+  using NodeId = unsigned int;
   /**
    * a data node has at least l and at most 2l-1 records.
    * this kind of node is called a "record" on Wikipedia.
@@ -59,6 +59,7 @@ class BPTree {
 
     // these fields are not stored, and need to be initialized on deserialization.
     NodeId id = 0;
+    File<szNode> *file_;
 
     struct Serialized {
       // we need these to make sizeof() work
@@ -69,7 +70,7 @@ class BPTree {
       Serialized (const DataNode &node) { memcpy(this, &node, sizeof(*this)); }
     };
     static_assert(sizeof(Serialized) <= szNode);
-    DataNode (const Serialized &serialized, size_t id) : id(id) { memcpy(this, &serialized, sizeof(serialized)); }
+    DataNode (const Serialized &serialized, File<szNode> *file, size_t id) : file_(file), id(id) { memcpy(this, &serialized, sizeof(serialized)); }
 
     DataNode () = default;
     explicit DataNode (NodeId id) : id(id) {}
@@ -78,13 +79,13 @@ class BPTree {
       entries.insert(entry);
       if (entries.length == 2 * l) split_();
       AK_ASSERT(entries.length < 2 * l);
-      file_.set(id, *this);
+      file_->set(id, *this);
     }
     void remove (const Payload &entry) {
       size_t pos = entries.indexOf(entry);
       if (pos != entries.length - 1) memmove(&entries.content[pos], &entries.content[pos + 1], sizeof(entries[0]) * (entries.length - pos - 1));
       if (entries.length < l) merge_();
-      file_.set(id, *this);
+      file_->set(id, *this);
     }
     std::optional<ValueType> findOne (const KeyType &key) {}
     std::vector<ValueType> findMany (const KeyType &key) {}
@@ -99,26 +100,26 @@ class BPTree {
       entries.length = newNode.entries.length = l;
       memmove(newNode.entries.content, &entries.content[l], l * sizeof(entries.content[0]));
       newNode.parent = parent;
-      next = newNode.id = file_.push(newNode);
+      next = newNode.id = file_->push(newNode);
 
       // update the parent index node
-      IndexNode inode = file_.template get<IndexNode>(parent);
+      IndexNode inode = file_->template get<IndexNode>(parent);
       inode.children.insert(next, inode.children.indexOf(id) + 1);
       inode.splits.insert(newNode.entries[0]);
       inode.splitIfNeeded();
-      file_.set(inode.id, inode);
+      file_->set(inode.id, inode);
     }
     void destroy_ () {
       AK_ASSERT(entries.length == 0);
-      file_.remove(id);
-      file_.template get<IndexNode>(parent).removeChild(id);
+      file_->remove(id);
+      file_->template get<IndexNode>(parent).removeChild(id);
     }
     void merge_ () {
       AK_ASSERT(entries.length == l - 1);
-      if (!next) {
+      if (next == 0) {
         // do not do anything to the only node.
-        if (!prev) return;
-        DataNode prevNode = file_.template get<DataNode>(prev);
+        if (prev == 0) return;
+        DataNode prevNode = file_->template get<DataNode>(prev);
         // if there are more than l entries in the previous node, insert the last one.
         if (prevNode.entries.length > l) {
           entries.insert(prevNode.entries.pop());
@@ -133,9 +134,9 @@ class BPTree {
         prevNode.destroy_();
 
         // update parent
-        file_.template get<IndexNode>(prevNode.parent).removeChild(prevNode.id);
+        file_->template get<IndexNode>(prevNode.parent).removeChild(prevNode.id);
       } else {
-        DataNode nextNode = file_.template get<DataNode>(next);
+        DataNode nextNode = file_->template get<DataNode>(next);
         if (nextNode.entries.length > l) {
           entries.insert(nextNode.entries.shift());
           return;
@@ -144,7 +145,7 @@ class BPTree {
         entries.length += nextNode.entries.length;
         nextNode.entries.length = 0;
         nextNode.destroy_();
-        file_.template get<IndexNode>(nextNode.parent).removeChild(nextNode.id);
+        file_->template get<IndexNode>(nextNode.parent).removeChild(nextNode.id);
       }
     }
   };
@@ -165,6 +166,7 @@ class BPTree {
 
     // these fields are not stored, and need to be initialized on deserialization.
     NodeId id = 0;
+    File<szNode> *file_;
 
     struct Serialized {
       bool leaf;
@@ -175,7 +177,7 @@ class BPTree {
       Serialized (const IndexNode &node) { memcpy(this, &node, sizeof(*this)); }
     };
     static_assert(sizeof(Serialized) <= szNode);
-    IndexNode (const Serialized &serialized, size_t id) : id(id) { memcpy(this, &serialized, sizeof(serialized)); }
+    IndexNode (const Serialized &serialized, File<szNode> *file, size_t id) : file_(file), id(id) { memcpy(this, &serialized, sizeof(serialized)); }
 
     IndexNode () = default;
 
@@ -184,8 +186,8 @@ class BPTree {
       // TODO
     }
     std::optional<IndexNode> remove (const Payload &entry) {}
-    const std::optional<ValueType> findOne (const KeyType &key) {}
-    const std::vector<ValueType> findMany (const KeyType &key) {}
+    std::optional<ValueType> findOne (const KeyType &key) {}
+    std::vector<ValueType> findMany (const KeyType &key) {}
 
     void splitIfNeeded () { if (children.length >= 2 * k) split(); }
     void split () {
@@ -207,8 +209,8 @@ class BPTree {
           left.leaf = right.leaf = true;
         }
         left.parent = right.parent = id; // i.e. 0
-        left.id = file_.push(left);
-        right.id = file_.push(right);
+        left.id = file_->push(left);
+        right.id = file_->push(right);
 
         // initiate the new root node
         children.length = splits.length = 0;
@@ -226,15 +228,15 @@ class BPTree {
       splits.length = next.splits.length = children.length = next.children.length = k;
       next.parent = parent;
       next.leaf = leaf;
-      next.id = file_.push(next);
+      next.id = file_->push(next);
 
       // update parent node
-      IndexNode inode = file_.template get<IndexNode>(parent);
+      IndexNode inode = file_->template get<IndexNode>(parent);
       size_t ix = inode.children.indexOf(id);
       inode.children.insert(next.id, ix + 1);
       inode.splits.insert(next.splits[0]);
       inode.splitIfNeeded();
-      file_.set(inode.id, inode);
+      file_->set(inode.id, inode);
     }
     void mergeIfNeeded () {
       if (isRoot_()) {
@@ -246,13 +248,13 @@ class BPTree {
     void merge () {
       AK_ASSERT(!isRoot_());
       AK_ASSERT(children.length < k);
-      IndexNode parentNode = file_.template get<IndexNode>(parent);
+      IndexNode parentNode = file_->template get<IndexNode>(parent);
       size_t ix = parentNode.children.indexOf(id);
       const bool hasPrev = ix != 0, hasNext = ix != parentNode.children.length - 1;
       if (!hasNext) {
         // all nodes has at least 2 child nodes, except if this is the root node.
         AK_ASSERT(hasPrev);
-        IndexNode prev = file_.template get<IndexNode>(parentNode.children[ix - 1]);
+        IndexNode prev = file_->template get<IndexNode>(parentNode.children[ix - 1]);
         // if there are more than k children in the previous node, insert the last one.
         if (prev.children.length > k) {
           children.insert(prev.children.pop());
@@ -263,9 +265,9 @@ class BPTree {
         // we now have prev: [b[0],...,b[l-1]] and this: [a[0]...a[l-2]], want this: [b[0],...,b[l-1],a[0],...,a[l-2]]
         // FIXME: find out a way to remove dupe code here
         if (prev.parent != parent) prev.children.forEach([this] (const NodeId &nodeId) {
-          IndexNode node = file_.template get<IndexNode>(nodeId);
+          IndexNode node = file_->template get<IndexNode>(nodeId);
           node.parent = parent;
-          file_.set(nodeId, node);
+          file_->set(nodeId, node);
         });
         children.copyFrom(children, 0, k, k - 1);
         children.copyFrom(prev.children, 0, 0, k);
@@ -282,7 +284,7 @@ class BPTree {
         parentNode.removeChild(prev.id);
         return;
       }
-      IndexNode next = file_.template get<IndexNode>(parentNode.children[ix - 1]);
+      IndexNode next = file_->template get<IndexNode>(parentNode.children[ix - 1]);
       if (next.children.length > k) {
         children.insert(next.children.shift());
         splits.insert(next.splits.shift());
@@ -291,9 +293,9 @@ class BPTree {
 
       // FIXME: remove dupe code here
       if (next.parent != parent) next.children.forEach([this] (const NodeId &nodeId) {
-        IndexNode node = file_.template get<IndexNode>(nodeId);
+        IndexNode node = file_->template get<IndexNode>(nodeId);
         node.parent = parent;
-        file_.set(nodeId, node);
+        file_->set(nodeId, node);
       });
       children.copyFrom(next.children, 0, k, k);
       children.length += next.children.length;
@@ -304,7 +306,7 @@ class BPTree {
       next.splits.length = 0;
 
       next.destroy_();
-      file_.template get<IndexNode>(next.parent).removeChild(next.id);
+      file_->template get<IndexNode>(next.parent).removeChild(next.id);
     }
 
     void removeChild (NodeId id) {
@@ -313,14 +315,14 @@ class BPTree {
       splits.removeAt(ix);
       mergeIfNeeded();
       // don't save if wiped out
-      if (children.length) file_.set(id, *this);
+      if (children.length) file_->set(id, *this);
     }
 
    private:
     bool isRoot_ () { return id == 0; }
     void mergeRoot_ () {
       AK_ASSERT(isRoot_());
-      IndexNode child = file_.template get<IndexNode>(children[0]);
+      IndexNode child = file_->template get<IndexNode>(children[0]);
       memcpy(this, &child, offsetof(IndexNode, id));
       parent = id; // i.e. 0
     }

@@ -21,8 +21,8 @@ class Exception : public std::exception {
  public:
   const char *message;
   explicit Exception (const char *message) : message(message) {}
-  const char *what () const noexcept;
-  virtual ~Exception ();
+  [[nodiscard]] const char *what () const noexcept override;
+  ~Exception () override;
 };
 
 class IOException : public Exception {

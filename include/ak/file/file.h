@@ -10,11 +10,13 @@
 #include <memory>
 #include <unordered_map>
 
+#include "../base.h"
+
 namespace ak::file {
 /**
  * a chunked file storage with manual garbage collection, with chunk size of szChunk and a cache powered by unordered_map.
  * the stored class need to be "serializable," i.e. has a subclass (or subtype) Serialized.
- * File methods will call Serialized(T) on serialization, and T(Serialized, int id) on deserialization.
+ * File methods will call Serialized(T) on serialization, and T(Serialized, File *file, int id) on deserialization.
  * Serialized need to be able to be stored directly, i.e. it has no pointer fields and no data stored on heap space (e.g. no std::string, std::set, etc.).
  * Serialized also need to be copy constructible.
  * File would call the default constructor of Serialized, so it need to be present.
@@ -33,7 +35,7 @@ class File {
     size_t next;
     bool hasNext;
     Metadata (size_t next, bool hasNext) : next(next), hasNext(hasNext) {}
-    Metadata (const Serialized &serialized, int) : next(serialized.next), hasNext(serialized.hasNext) {}
+    Metadata (const Serialized &serialized, File * /* unused */, int /* unused */) : next(serialized.next), hasNext(serialized.hasNext) {}
   };
   Metadata meta_ () { return get<Metadata>(-1); }
   size_t offset_ (size_t index) { return (index + 1) * szChunk; }
@@ -43,7 +45,7 @@ class File {
   File () = delete;
   File (const char *filename, const std::function<void (void)> &initializer) {
     struct stat _st;
-    bool shouldCreate = stat(filename, &_st);
+    bool shouldCreate = stat(filename, &_st) != 0;
     if (shouldCreate) {
       if (errno != ENOENT) throw IOException("File::init_: Unable to stat");
       file_.open(filename, std::ios_base::out);
@@ -64,7 +66,7 @@ class File {
     file_.seekg(offset_(index));
     file_.read(reinterpret_cast<char *>(&read), sizeof(read));
     if (index != -1) cache_[index] = std::shared_ptr<void>(new typename T::Serialized(read));
-    return T(read, index);
+    return T(read, this, index);
   }
   template <typename T>
   void set (size_t index, const T &object) {
