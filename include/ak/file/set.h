@@ -7,6 +7,7 @@
 
 #include "../base.h"
 
+// FIXME: remove dupe code of Set and Array. does C++ support mixins?
 namespace ak::file {
 /// a sorted array with utility functions and bound checks.
 template <typename T, size_t maxLength>
@@ -14,7 +15,7 @@ struct Set {
  private:
   void boundsCheck_ (size_t index) {
     if (index >= length) throw Overflow("Set: overflow");
-    if (index < 0) throw Underflow("Set: underflow");
+    // was `if (index < 0) throw Underflow("Set: underflow");`, but is always false because size_t is unsigned
   }
  public:
   Set () = default;
@@ -28,10 +29,14 @@ struct Set {
     if (index >= length || content[index] != element) throw NotFound("Set::indexOf: element not found");
     return index;
   }
+  bool includes (const T &element) {
+    return content[indexOfInsert(element)] == element;
+  }
   void insert (const T &element) {
-    if (length == maxLength - 1) throw Overflow("Set::insert: overflow");
-    size_t offset = indexOfInsert_(element);
+    if (length == maxLength) throw Overflow("Set::insert: overflow");
+    size_t offset = indexOfInsert(element);
     if (offset != length) memmove(&content[offset + 1], &content[offset], (length - offset) * sizeof(content[0]));
+    content[offset] = element;
     ++length;
   }
 

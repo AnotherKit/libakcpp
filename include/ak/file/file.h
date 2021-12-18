@@ -13,10 +13,21 @@
 #include "../base.h"
 
 namespace ak::file {
+template <size_t szChunk>
+class File;
+
+template <size_t szChunk, typename T>
+concept Serializable = requires(T a, typename T::Serialized s, File<szChunk> *file, size_t id) {
+  std::copy_constructible<T>;
+  { typename T::Serialized(a) } -> std::same_as<typename T::Serialized>;
+  { typename T::Serialized() } -> std::same_as<typename T::Serialized>;
+  { T(s, file, id) } -> std::same_as<T>;
+};
+
 /**
  * a chunked file storage with manual garbage collection, with chunk size of szChunk and a cache powered by unordered_map.
  * the stored class need to be "serializable," i.e. has a subclass (or subtype) Serialized.
- * File methods will call Serialized(T) on serialization, and T(Serialized, File *file, int id) on deserialization.
+ * File methods will call Serialized(T) on serialization, and T(Serialized, File *file, size_t id) on deserialization.
  * Serialized need to be able to be stored directly, i.e. it has no pointer fields and no data stored on heap space (e.g. no std::string, std::set, etc.).
  * Serialized also need to be copy constructible.
  * File would call the default constructor of Serialized, so it need to be present.
@@ -35,7 +46,7 @@ class File {
     size_t next;
     bool hasNext;
     Metadata (size_t next, bool hasNext) : next(next), hasNext(hasNext) {}
-    Metadata (const Serialized &serialized, File * /* unused */, int /* unused */) : next(serialized.next), hasNext(serialized.hasNext) {}
+    Metadata (const Serialized &serialized, File * /* unused */, size_t /* unused */) : next(serialized.next), hasNext(serialized.hasNext) {}
   };
   Metadata meta_ () { return get<Metadata>(-1); }
   size_t offset_ (size_t index) { return (index + 1) * szChunk; }
@@ -59,28 +70,27 @@ class File {
     }
   }
 
-  template <typename T>
+  template <typename T> requires Serializable<szChunk, T>
   T get (size_t index) {
-    if (index != -1 && cache_.count(index) > 0) return T(*reinterpret_cast<typename T::Serialized *>(cache_[index].get()), index);
+    if (index != -1 && cache_.count(index) > 0) return T(*reinterpret_cast<typename T::Serialized *>(cache_[index].get()), this, index);
     typename T::Serialized read;
     file_.seekg(offset_(index));
     file_.read(reinterpret_cast<char *>(&read), sizeof(read));
-    if (index != -1) cache_[index] = std::shared_ptr<void>(new typename T::Serialized(read));
+    if (index != -1) cache_[index] = std::make_shared<typename T::Serialized>(read);
     return T(read, this, index);
   }
-  template <typename T>
+  template <typename T> requires Serializable<szChunk, T>
   void set (size_t index, const T &object) {
     typename T::Serialized serialized{object};
-    if (index != -1) cache_[index] = std::shared_ptr<void>(new typename T::Serialized(serialized));
+    if (index != -1) cache_[index] = std::make_shared<typename T::Serialized>(serialized);
     file_.seekp(offset_(index));
     file_.write(reinterpret_cast<const char *>(&serialized), sizeof(serialized));
-    file_.flush();
   }
   /// @returns the stored index of the object
-  template <typename T>
-  int push (const T &object) {
+  template <typename T> requires Serializable<szChunk, T>
+  size_t push (const T &object) {
     Metadata meta = meta_();
-    int id = meta.next;
+    size_t id = meta.next;
     set(id, object);
     if (meta.hasNext) {
       Metadata nextMeta = get<Metadata>(meta.next);

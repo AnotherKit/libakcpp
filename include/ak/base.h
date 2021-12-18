@@ -11,10 +11,14 @@
 
 #ifdef AK_DEBUG
 #include <assert.h>
+#include <iostream>
 #define AK_ASSERT(x) assert(x)
+#define AK_DEBUGONLY(x) (x)
 #else
-#define AK_ASSERT(x) sizeof(x)
+#define AK_ASSERT(x)
+#define AK_DEBUG(x)
 #endif
+#define AK_LOG(x) AK_DEBUGONLY(std::cerr << (x) << std::endl)
 
 namespace ak {
 class Exception : public std::exception {

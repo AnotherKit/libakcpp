@@ -24,10 +24,15 @@ struct Array {
     for (size_t i = 0; i < length; ++i) if (element == content[i]) return i;
     throw NotFound("Array::indexOf: element not found");
   }
+  bool includes (const T &element) {
+    for (size_t i = 0; i < length; ++i) if (element == content[i]) return true;
+    return false;
+  }
   void insert (const T &element, size_t offset) {
     if (offset != length) boundsCheck_(offset);
-    if (length == maxLength - 1) throw Overflow("Array::insert: overflow");
+    if (length == maxLength) throw Overflow("Array::insert: overflow");
     if (offset != length) memmove(&content[offset + 1], &content[offset], (length - offset) * sizeof(content[0]));
+    content[offset] = element;
     ++length;
   }
 
@@ -60,7 +65,7 @@ struct Array {
   void unshift (const T &object) { insert(object, 0); }
 
   void forEach (const std::function<void (const T &element)> &callback) {
-    for (int i = 0; i < length; ++i) callback(content[i]);
+    for (size_t i = 0; i < length; ++i) callback(content[i]);
   }
 };
 } // namespace ak::file
