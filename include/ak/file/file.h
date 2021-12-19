@@ -1,57 +1,44 @@
 #ifndef AK_LIB_FILE_FILE_H_
 #define AK_LIB_FILE_FILE_H_
 
+#include <string.h>
+#include <stddef.h>
 #include <errno.h>
 #include <sys/stat.h>
 
 #include <fstream>
 #include <functional>
 #include <limits>
-#include <memory>
 #include <unordered_map>
 
 #include "../base.h"
 
 namespace ak::file {
-template <size_t szChunk>
-class File;
-
-template <size_t szChunk, typename T>
-concept Serializable = requires(T a, typename T::Serialized s, File<szChunk> *file, size_t id) {
-  std::copy_constructible<T>;
-  { typename T::Serialized(a) } -> std::same_as<typename T::Serialized>;
-  { typename T::Serialized() } -> std::same_as<typename T::Serialized>;
-  { T(s, file, id) } -> std::same_as<T>;
-};
-
-/**
- * a chunked file storage with manual garbage collection, with chunk size of szChunk and a cache powered by unordered_map.
- * the stored class need to be "serializable," i.e. has a subclass (or subtype) Serialized.
- * File methods will call Serialized(T) on serialization, and T(Serialized, File *file, size_t id) on deserialization.
- * Serialized need to be able to be stored directly, i.e. it has no pointer fields and no data stored on heap space (e.g. no std::string, std::set, etc.).
- * Serialized also need to be copy constructible.
- * File would call the default constructor of Serialized, so it need to be present.
- */
+/// a chunked file storage with manual garbage collection, with chunk size of szChunk and a cache powered by unordered_map.
 template <size_t szChunk>
 class File {
  private:
-  static_assert(szChunk > sizeof(size_t));
   struct Metadata {
-    struct Serialized {
-      size_t next : std::numeric_limits<size_t>::digits - 1;
-      bool hasNext : 1;
-      Serialized () = default;
-      Serialized (const Metadata &meta) : next(meta.next), hasNext(meta.hasNext) {}
-    };
     size_t next;
     bool hasNext;
+    Metadata () = default;
     Metadata (size_t next, bool hasNext) : next(next), hasNext(hasNext) {}
-    Metadata (const Serialized &serialized, File * /* unused */, size_t /* unused */) : next(serialized.next), hasNext(serialized.hasNext) {}
   };
-  Metadata meta_ () { return get<Metadata>(-1); }
+  static_assert(szChunk > sizeof(Metadata));
+  Metadata meta_ () {
+    Metadata retval;
+    get(&retval, -1, sizeof(retval));
+    return retval;
+  }
   size_t offset_ (size_t index) { return (index + 1) * szChunk; }
   std::fstream file_;
-  std::unordered_map<size_t, std::shared_ptr<void>> cache_;
+  std::unordered_map<size_t, char *> cache_;
+  void putCache_ (void *buf, size_t index, size_t n) {
+    char *cache = new char[n];
+    memcpy(cache, buf, n);
+    if (cache_.count(index) > 0) delete[] cache_[index];
+    cache_[index] = cache;
+  }
  public:
   File () = delete;
   File (const char *filename, const std::function<void (void)> &initializer) {
@@ -65,49 +52,104 @@ class File {
     file_.open(filename);
     if (!file_.is_open() || !file_.good()) throw IOException("Unable to open file");
     if (shouldCreate) {
-      set(-1, Metadata(0, false));
+      Metadata meta(0, false);
+      set(&meta, -1, sizeof(meta));
       initializer();
     }
   }
+  ~File () { clearCache(); }
 
-  template <typename T> requires Serializable<szChunk, T>
-  T get (size_t index) {
-    if (index != -1 && cache_.count(index) > 0) return T(*reinterpret_cast<typename T::Serialized *>(cache_[index].get()), this, index);
-    typename T::Serialized read;
+  /// read n bytes at index into buf.
+  void get (void *buf, size_t index, size_t n) {
+    if (index != -1 && cache_.count(index) > 0) {
+      memcpy(buf, cache_[index], n);
+      return;
+    }
     file_.seekg(offset_(index));
-    file_.read(reinterpret_cast<char *>(&read), sizeof(read));
-    if (index != -1) cache_[index] = std::make_shared<typename T::Serialized>(read);
-    return T(read, this, index);
+    file_.read((char *) buf, n);
+    if (index != -1) putCache_(buf, index, n);
   }
-  template <typename T> requires Serializable<szChunk, T>
-  void set (size_t index, const T &object) {
-    typename T::Serialized serialized{object};
-    if (index != -1) cache_[index] = std::make_shared<typename T::Serialized>(serialized);
+  /// write n bytes at index from buf.
+  void set (void *buf, size_t index, size_t n) {
+    if (index != -1) {
+      // dirty check
+      if (cache_.count(index) && memcmp(buf, cache_[index], n) == 0) return;
+      putCache_(buf, index, n);
+    }
     file_.seekp(offset_(index));
-    file_.write(reinterpret_cast<const char *>(&serialized), sizeof(serialized));
+    file_.write((char *) buf, n);
   }
   /// @returns the stored index of the object
-  template <typename T> requires Serializable<szChunk, T>
-  size_t push (const T &object) {
+  size_t push (void *buf, size_t n) {
     Metadata meta = meta_();
     size_t id = meta.next;
-    set(id, object);
     if (meta.hasNext) {
-      Metadata nextMeta = get<Metadata>(meta.next);
-      set(-1, nextMeta);
+      Metadata nextMeta;
+      get(&nextMeta, meta.next, sizeof(nextMeta));
+      set(&nextMeta, -1, sizeof(nextMeta));
     } else {
       ++meta.next;
-      set(-1, meta);
+      set(&meta, -1, sizeof(meta));
     }
+    set(buf, id, n);
     return id;
   }
   void remove (size_t index) {
-    set(index, meta_());
-    set(-1, Metadata(index, true));
+    Metadata meta = meta_();
+    set(&meta, index, sizeof(meta));
+    Metadata newMeta(index, true);
+    set(&newMeta, -1, sizeof(newMeta));
+    if (cache_.count(index) > 0) delete[] cache_[index];
     cache_.erase(index);
   }
 
-  void clearCache () { cache_.clear(); }
+  void clearCache () {
+    for (const auto &[ _, ptr ] : cache_) delete[] ptr;
+    cache_.clear();
+  }
+};
+
+/**
+ * an opinionated utility base class for the objects to be stored.
+ * it handles get, update, and push for the object.
+ * the inherited object must have two zero-length char arrays `_start` and `_end` to indicate the start and end positions to store.
+ */
+template <typename T, size_t szChunk>
+class ManagedObject {
+ private:
+  File<szChunk> *file_;
+  size_t id_ = -1;
+  ManagedObject (File<szChunk> &file, size_t id) : file_(&file), id_(id) {}
+  static size_t getSize_ () { return offsetof(T, _end) - offsetof(T, _start); }
+  static size_t getOffset_ () { return offsetof(T, _start); }
+ public:
+  ManagedObject () = delete;
+  ManagedObject (File<szChunk> &file) : file_(&file) {}
+  virtual ~ManagedObject () {}
+
+  size_t id () { return id_; }
+
+  static T get (File<szChunk> &file, size_t id) {
+    char buf[sizeof(T)];
+    file.get(buf + getOffset_(), id, getSize_());
+    ManagedObject &result = *reinterpret_cast<ManagedObject *>(buf);
+    result.file_ = &file;
+    result.id_ = id;
+    return *reinterpret_cast<T *>(buf);
+  }
+  void save () {
+    if (id_ != -1) throw Exception("Already saved");
+    id_ = file_->push(reinterpret_cast<char *>(this) + getOffset_(), getSize_());
+  }
+  void update () {
+    if (id_ == -1) throw Exception("Not saved");
+    file_->set(reinterpret_cast<char *>(this) + getOffset_(), id_, getSize_());
+  }
+  void destroy () {
+    if (id_ == -1) throw Exception("Not saved");
+    file_->remove(id_);
+    id_ = -1;
+  }
 };
 } // namespace ak::file
 

@@ -13,8 +13,7 @@ template <typename T, size_t maxLength>
 struct Array {
  private:
   void boundsCheck_ (size_t index) {
-    if (index >= length) throw Overflow("Array: overflow");
-    if (index < 0) throw Underflow("Array: underflow");
+    if (index >= length) throw OutOfBounds("Array: overflow or underflow");
   }
  public:
   Array () = default;
@@ -42,6 +41,7 @@ struct Array {
     if (offset != length - 1) memmove(&content[offset], &content[offset + 1], (length - offset - 1) * sizeof(content[0]));
     --length;
   }
+  void clear () { length = 0; }
 
   void copyFrom (const Array &other, size_t fromIndex, size_t toIndex, size_t count) {
     if (this == &other) memmove(&content[toIndex], &content[fromIndex], count * sizeof(content[0]));

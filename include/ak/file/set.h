@@ -14,8 +14,7 @@ template <typename T, size_t maxLength>
 struct Set {
  private:
   void boundsCheck_ (size_t index) {
-    if (index >= length) throw Overflow("Set: overflow");
-    // was `if (index < 0) throw Underflow("Set: underflow");`, but is always false because size_t is unsigned
+    if (index >= length) throw OutOfBounds("Set: overflow or underflow");
   }
  public:
   Set () = default;
@@ -46,6 +45,7 @@ struct Set {
     if (offset != length - 1) memmove(&content[offset], &content[offset + 1], (length - offset - 1) * sizeof(content[0]));
     --length;
   }
+  void clear () { length = 0; }
 
   void copyFrom (const Set &other, size_t fromIndex, size_t toIndex, size_t count) {
     if (this == &other) memmove(&content[toIndex], &content[fromIndex], count * sizeof(content[0]));

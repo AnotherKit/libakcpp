@@ -9,6 +9,8 @@
 **/vgcore*
 **perf**
 
+build
+
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
