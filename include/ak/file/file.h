@@ -73,7 +73,7 @@ class File {
   void set (void *buf, size_t index, size_t n) {
     if (index != -1) {
       // dirty check
-      if (cache_.count(index) && memcmp(buf, cache_[index], n) == 0) return;
+      if (cache_.count(index) > 0 && memcmp(buf, cache_[index], n) == 0) return;
       putCache_(buf, index, n);
     }
     file_.seekp(offset_(index));
@@ -125,7 +125,7 @@ class ManagedObject {
  public:
   ManagedObject () = delete;
   ManagedObject (File<szChunk> &file) : file_(&file) {}
-  virtual ~ManagedObject () {}
+  virtual ~ManagedObject () = default;
 
   size_t id () { return id_; }
 

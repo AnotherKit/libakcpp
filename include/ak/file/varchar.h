@@ -15,7 +15,7 @@ struct Varchar {
  private:
   template <int A>
   friend class Varchar;
-  char content[maxLength + 1]; // NOLINT(modernize-avoid-c-arrays): it's clear that we need to use C-style array here.
+  char content[maxLength + 1];
  public:
   Varchar () { content[0] = '\0'; }
   Varchar (const std::string &s) {

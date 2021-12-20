@@ -19,7 +19,7 @@ struct Set {
  public:
   Set () = default;
   size_t length = 0;
-  T content[maxLength]; // NOLINT(modernize-avoid-c-arrays): it's clear that we need to use C-style array here.
+  T content[maxLength];
   size_t indexOfInsert (const T &element) {
     return std::lower_bound(content, content + length, element) - content;
   }

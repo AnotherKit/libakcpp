@@ -26,6 +26,8 @@ concept BptStorable = requires(T a, T b) {
   std::copy_constructible<T>;
 };
 
+constexpr size_t kDefaultSzChunk = 4096;
+
 /**
  * an implementation of the B+ tree. It stores key and value together in order to support duplicate keys.
  *
@@ -38,7 +40,7 @@ concept BptStorable = requires(T a, T b) {
  *   Sector size (logical/physical): 512 bytes / 512 bytes
  *   I/O size (minimum/optimal): 512 bytes / 512 bytes
  */
-template <BptStorable KeyType, BptStorable ValueType, size_t szChunk = 4096>
+template <BptStorable KeyType, BptStorable ValueType, size_t szChunk = kDefaultSzChunk>
 class BpTree {
  private:
   File<szChunk> file_;
@@ -71,9 +73,11 @@ class BpTree {
   using NodeId = unsigned int;
   // ROOT and INTERMEDIATE nodes are index nodes
   enum NodeType { ROOT, INTERMEDIATE, RECORD };
+  // if k > kLengthMax, there must be an overflow.
+  static constexpr size_t kLengthMax = 18446744073709000000ULL;
   struct IndexPayload {
     static constexpr size_t k = (szChunk - 2 * sizeof(NodeId)) / (sizeof(NodeId) + sizeof(Pair)) / 2;
-    static_assert(k >= 2 && k < 18446744073709000000ULL);
+    static_assert(k >= 2 && k < kLengthMax);
     bool leaf = false;
     /// for leaf nodes, childs are the indices of data nodes.
     Array<NodeId, 2 * k> children;
@@ -81,7 +85,7 @@ class BpTree {
   };
   struct RecordPayload {
     static constexpr size_t l = (szChunk - 3 * sizeof(NodeId)) / sizeof(Pair) / 2;
-    static_assert(l >= 2 && l < 18446744073709000000ULL);
+    static_assert(l >= 2 && l < kLengthMax);
     NodeId prev = 0;
     NodeId next = 0;
     Set<Pair, 2 * l> entries;
@@ -89,7 +93,7 @@ class BpTree {
   union NodePayload {
     IndexPayload index;
     RecordPayload record;
-    NodePayload () {}
+    NodePayload () = default;
   };
   struct Node : public ManagedObject<Node, szChunk> {
     char _start[0];
@@ -143,6 +147,30 @@ class BpTree {
     size_t ix = std::upper_bound(splits.content, splits.content + splits.length, entry) - splits.content;
     return ix == 0 ? ix : ix - 1;
   }
+  void splitRoot_ (Node &node) {
+    Node left(*this, INTERMEDIATE), right(*this, INTERMEDIATE);
+
+    // copy children and splits
+    left.children().copyFrom(node.children(), 0, 0, IndexPayload::k);
+    left.splits().copyFrom(node.splits(), 0, 0, IndexPayload::k);
+    right.children().copyFrom(node.children(), IndexPayload::k, 0, IndexPayload::k);
+    right.splits().copyFrom(node.splits(), IndexPayload::k, 0, IndexPayload::k);
+    left.children().length = left.splits().length = right.children().length = right.splits().length = IndexPayload::k;
+
+    // set misc properties and save
+    left.leaf() = right.leaf() = node.leaf();
+    node.leaf() = false;
+    left.save();
+    right.save();
+
+    // initiate the new root node
+    node.children().clear();
+    node.children().insert(left.id(), 0);
+    node.children().insert(right.id(), 1);
+    node.splits().clear();
+    node.splits().insert(left.lowerBound());
+    node.splits().insert(right.lowerBound());
+  }
   void split_ (Node &node, Node &parent, size_t ixChild) {
     AK_ASSERT(node.shouldSplit());
 #ifdef AK_DEBUG_BPTREE
@@ -150,28 +178,7 @@ class BpTree {
 #endif
     if (node.type == ROOT) {
       // the split of the root node is a bit different from other nodes. it produces two extra subnodes.
-      Node left(*this, INTERMEDIATE), right(*this, INTERMEDIATE);
-
-      // copy children and splits
-      left.children().copyFrom(parent.children(), 0, 0, IndexPayload::k);
-      left.splits().copyFrom(parent.splits(), 0, 0, IndexPayload::k);
-      right.children().copyFrom(parent.children(), IndexPayload::k, 0, IndexPayload::k);
-      right.splits().copyFrom(parent.splits(), IndexPayload::k, 0, IndexPayload::k);
-      left.children().length = left.splits().length = right.children().length = right.splits().length = IndexPayload::k;
-
-      // set misc properties and save
-      left.leaf() = right.leaf() = parent.leaf();
-      parent.leaf() = false;
-      left.save();
-      right.save();
-
-      // initiate the new root node
-      parent.children().clear();
-      parent.children().insert(left.id(), 0);
-      parent.children().insert(right.id(), 1);
-      parent.splits().clear();
-      parent.splits().insert(left.lowerBound());
-      parent.splits().insert(right.lowerBound());
+      splitRoot_(node);
       return;
     }
     AK_ASSERT(node.type != ROOT);
@@ -394,7 +401,7 @@ class BpTree {
       auto [ car, cdr ] = findFirstChildWithKey_(key, node);
       if (!cdr) return findMany_(key, car);
       std::vector<ValueType> res = findMany_(key, car);
-      if (res.size() > 0) return res;
+      if (!res.empty()) return res;
       return findMany_(key, *cdr);
     }
     size_t ix = std::upper_bound(node.entries().content, node.entries().content + node.length(), key, KeyComparatorLess_()) - node.entries().content;
