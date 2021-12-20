@@ -93,7 +93,7 @@ class BpTree {
   union NodePayload {
     IndexPayload index;
     RecordPayload record;
-    NodePayload () = default;
+    NodePayload () {} // NOLINT
   };
   struct Node : public ManagedObject<Node, szChunk> {
     char _start[0];

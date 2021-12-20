@@ -67,6 +67,7 @@ class File {
     }
     file_.seekg(offset_(index));
     file_.read((char *) buf, n);
+    AK_ASSERT(file_.good());
     if (index != -1) putCache_(buf, index, n);
   }
   /// write n bytes at index from buf.
@@ -78,6 +79,7 @@ class File {
     }
     file_.seekp(offset_(index));
     file_.write((char *) buf, n);
+    AK_ASSERT(file_.good());
   }
   /// @returns the stored index of the object
   size_t push (void *buf, size_t n) {

@@ -29,7 +29,8 @@ struct Set {
     return index;
   }
   bool includes (const T &element) {
-    return content[indexOfInsert(element)] == element;
+    size_t ix = indexOfInsert(element);
+    return ix < length && content[ix] == element;
   }
   void insert (const T &element) {
     if (length == maxLength) throw Overflow("Set::insert: overflow");
