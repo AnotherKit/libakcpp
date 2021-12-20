@@ -3,7 +3,6 @@
 
 #include <string.h>
 
-#include <compare>
 #include <string>
 
 #include "../base.h"
@@ -34,14 +33,9 @@ struct Varchar {
     return *this;
   }
   template <int A>
-  std::weak_ordering operator<=> (const Varchar<A> &that) const {
-    int res = strcmp(content, that.content);
-    if (res < 0) return std::weak_ordering::less;
-    if (res > 0) return std::weak_ordering::greater;
-    return std::weak_ordering::equivalent;
-  }
+  bool operator< (const Varchar<A> &that) const { return strcmp(content, that.content) < 0; }
   template <int A>
-  bool operator== (const Varchar<A> &that) const { return (*this <=> that) == std::weak_ordering::equivalent; };
+  bool operator== (const Varchar<A> &that) const { return strcmp(content, that.content) == 0; }
   template <int A>
   bool operator!= (const Varchar<A> &that) const { return !(*this == that); }
 };

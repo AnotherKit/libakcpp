@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include <algorithm>
-#include <compare>
 #include <optional>
 #include <vector>
 
@@ -18,14 +17,6 @@
 #endif
 
 namespace ak::file {
-template <typename T>
-concept BptStorable = requires(T a, T b) {
-  { a <=> b } -> std::convertible_to<std::weak_ordering>;
-  { a == b } -> std::same_as<bool>;
-  { a != b } -> std::same_as<bool>;
-  std::copy_constructible<T>;
-};
-
 constexpr size_t kDefaultSzChunk = 4096;
 
 /**
@@ -40,7 +31,7 @@ constexpr size_t kDefaultSzChunk = 4096;
  *   Sector size (logical/physical): 512 bytes / 512 bytes
  *   I/O size (minimum/optimal): 512 bytes / 512 bytes
  */
-template <BptStorable KeyType, BptStorable ValueType, size_t szChunk = kDefaultSzChunk>
+template <typename KeyType, typename ValueType, size_t szChunk = kDefaultSzChunk>
 class BpTree {
  private:
   File<szChunk> file_;
@@ -50,24 +41,26 @@ class BpTree {
   struct Pair {
     KeyType key;
     ValueType value;
-    std::weak_ordering operator<=> (const Pair &that) const {
-      if (key != that.key) return key <=> that.key;
-      return value <=> that.value;
+    bool operator< (const Pair &that) const {
+      if (key != that.key) return key < that.key;
+      return value < that.value;
     }
-    bool operator== (const Pair &) const = default;
-    bool operator!= (const Pair &) const = default;
+    bool operator== (const Pair &that) const {
+      return key == that.key && value == that.value;
+    }
+    bool operator!= (const Pair &that) const { return !(*this == that); }
   };
   /// compares a Payload and a KeyType that key alone is greater than all payloads with this key
   class KeyComparator_ {
    public:
-    bool operator() (const Pair &lhs, const KeyType &rhs) { return lhs.key <= rhs; }
+    bool operator() (const Pair &lhs, const KeyType &rhs) { return !(rhs < lhs.key); }
     bool operator() (const KeyType &lhs, const Pair &rhs) { return lhs < rhs.key; }
   };
   /// compares a Payload and a KeyType that key alone is less than all payloads with this key
   class KeyComparatorLess_ {
    public:
     bool operator() (const Pair &lhs, const KeyType &rhs) { return lhs.key < rhs; }
-    bool operator() (const KeyType &lhs, const Pair &rhs) { return lhs <= rhs.key; }
+    bool operator() (const KeyType &lhs, const Pair &rhs) { return !(rhs.key < lhs); }
   };
 
   using NodeId = unsigned int;
