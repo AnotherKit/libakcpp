@@ -33,7 +33,7 @@ constexpr size_t kDefaultSzChunk = 4096;
  *
  * constraints: KeyType and ValueType need to be comparable.
  *
- * why default szNode = 4096: excerpt of `sudo fdisk -l` on my machine:
+ * why default szChunk = 4096: excerpt of `sudo fdisk -l` on my machine:
  *   Disk /dev/nvme1n1: 1.82 TiB, 2000398934016 bytes, 3907029168 sectors
  *   Disk model: WD_BLACK  SN750 2TB
  *   Units: sectors of 1 * 512 = 512 bytes
