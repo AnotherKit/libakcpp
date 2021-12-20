@@ -26,8 +26,6 @@ concept BptStorable = requires(T a, T b) {
   std::copy_constructible<T>;
 };
 
-constexpr size_t kDefaultSzChunk = 4096;
-
 /**
  * an implementation of the B+ tree. It stores key and value together in order to support duplicate keys.
  *

@@ -14,8 +14,9 @@
 #include "../base.h"
 
 namespace ak::file {
+constexpr size_t kDefaultSzChunk = 4096;
 /// a chunked file storage with manual garbage collection, with chunk size of szChunk and a cache powered by unordered_map.
-template <size_t szChunk>
+template <size_t szChunk = kDefaultSzChunk>
 class File {
  private:
   struct Metadata {
@@ -116,7 +117,7 @@ class File {
  * it handles get, update, and push for the object.
  * the inherited object must have two zero-length char arrays `_start` and `_end` to indicate the start and end positions to store.
  */
-template <typename T, size_t szChunk>
+template <typename T, size_t szChunk = kDefaultSzChunk>
 class ManagedObject {
  private:
   File<szChunk> *file_;
