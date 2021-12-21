@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "../base.h"
+#include "../compare.h"
 #include "array.h"
 #include "file.h"
 #include "set.h"
@@ -20,9 +21,7 @@
 namespace ak::file {
 template <typename T>
 concept BptStorable = requires(T a, T b) {
-  { a <=> b } -> std::convertible_to<std::weak_ordering>;
-  { a == b } -> std::same_as<bool>;
-  { a != b } -> std::same_as<bool>;
+  Comparable<T>;
   std::copy_constructible<T>;
 };
 
@@ -48,24 +47,22 @@ class BpTree {
   struct Pair {
     KeyType key;
     ValueType value;
-    std::weak_ordering operator<=> (const Pair &that) const {
-      if (key != that.key) return key <=> that.key;
-      return value <=> that.value;
+    bool operator< (const Pair &that) const {
+      if (key < that.key || that.key < key) return key < that.key;
+      return value < that.value;
     }
-    bool operator== (const Pair &) const = default;
-    bool operator!= (const Pair &) const = default;
   };
   /// compares a Payload and a KeyType that key alone is greater than all payloads with this key
   class KeyComparator_ {
    public:
-    bool operator() (const Pair &lhs, const KeyType &rhs) { return lhs.key <= rhs; }
+    bool operator() (const Pair &lhs, const KeyType &rhs) { return !(rhs < lhs.key); }
     bool operator() (const KeyType &lhs, const Pair &rhs) { return lhs < rhs.key; }
   };
   /// compares a Payload and a KeyType that key alone is less than all payloads with this key
   class KeyComparatorLess_ {
    public:
     bool operator() (const Pair &lhs, const KeyType &rhs) { return lhs.key < rhs; }
-    bool operator() (const KeyType &lhs, const Pair &rhs) { return lhs <= rhs.key; }
+    bool operator() (const KeyType &lhs, const Pair &rhs) { return !(rhs.key < lhs); }
   };
 
   using NodeId = unsigned int;
@@ -319,13 +316,13 @@ class BpTree {
   void addValuesToVectorForAllKeyFrom_ (std::vector<ValueType> &vec, const KeyType &key, Node node, int first) {
     // we need to declare i outside to see if we have advanced to the last elemene
     int i = first;
-    for (; i < node.length() && node.entries()[i].key == key; ++i) vec.push_back(node.entries()[i].value);
+    for (; i < node.length() && equals(node.entries()[i].key, key); ++i) vec.push_back(node.entries()[i].value);
     if (i == node.length() && node.next() != 0) addValuesToVectorForAllKeyFrom_(vec, key, Node::get(file_, node.next()), 0);
   }
   std::pair<Node, std::optional<Node>> findFirstChildWithKey_ (const KeyType &key, Node &node) {
     AK_ASSERT(node.type != RECORD);
     size_t ixGreater = std::upper_bound(node.splits().content, node.splits().content + node.length(), key, KeyComparatorLess_()) - node.splits().content;
-    std::optional<Node> cdr = (ixGreater < node.length() && node.splits()[ixGreater].key == key) ? std::optional<Node>(Node::get(file_, node.children()[ixGreater])) : std::nullopt;
+    std::optional<Node> cdr = (ixGreater < node.length() && equals(node.splits()[ixGreater].key, key)) ? std::optional<Node>(Node::get(file_, node.children()[ixGreater])) : std::nullopt;
     size_t ix = ixGreater == 0 ? ixGreater : ixGreater - 1;
     return std::make_pair(Node::get(file_, node.children()[ix]), cdr);
   }
@@ -387,7 +384,7 @@ class BpTree {
     size_t ix = std::upper_bound(node.entries().content, node.entries().content + node.length(), key, KeyComparatorLess_()) - node.entries().content;
     if (ix >= node.length()) return std::nullopt;
     Pair entry = node.entries()[ix];
-    if (entry.key != key) return std::nullopt;
+    if (!equals(entry.key, key)) return std::nullopt;
     return entry.value;
   }
   bool includes_ (const Pair &entry, Node node) {

@@ -20,11 +20,11 @@ struct Array {
   size_t length = 0;
   T content[maxLength];
   size_t indexOf (const T &element) {
-    for (size_t i = 0; i < length; ++i) if (element == content[i]) return i;
+    for (size_t i = 0; i < length; ++i) if (equals(element, content[i])) return i;
     throw NotFound("Array::indexOf: element not found");
   }
   bool includes (const T &element) {
-    for (size_t i = 0; i < length; ++i) if (element == content[i]) return true;
+    for (size_t i = 0; i < length; ++i) if (equals(element, content[i])) return true;
     return false;
   }
   void insert (const T &element, size_t offset) {
