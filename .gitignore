@@ -10,6 +10,9 @@
 **perf**
 
 build
+*_test
+
+DartConfiguration.tcl
 
 CMakeLists.txt.user
 CMakeCache.txt
