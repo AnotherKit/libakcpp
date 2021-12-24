@@ -34,7 +34,7 @@ class File {
   size_t offset_ (size_t index) { return (index + 1) * szChunk; }
   std::fstream file_;
   std::unordered_map<size_t, char *> cache_;
-  void putCache_ (void *buf, size_t index, size_t n) {
+  void putCache_ (const void *buf, size_t index, size_t n) {
     char *cache = new char[n];
     memcpy(cache, buf, n);
     if (cache_.count(index) > 0) delete[] cache_[index];
@@ -72,18 +72,18 @@ class File {
     if (index != -1) putCache_(buf, index, n);
   }
   /// write n bytes at index from buf.
-  void set (void *buf, size_t index, size_t n) {
+  void set (const void *buf, size_t index, size_t n) {
     if (index != -1) {
       // dirty check
       if (cache_.count(index) > 0 && memcmp(buf, cache_[index], n) == 0) return;
       putCache_(buf, index, n);
     }
     file_.seekp(offset_(index));
-    file_.write((char *) buf, n);
+    file_.write((const char *) buf, n);
     AK_ASSERT(file_.good());
   }
   /// @returns the stored index of the object
-  size_t push (void *buf, size_t n) {
+  size_t push (const void *buf, size_t n) {
     Metadata meta = meta_();
     size_t id = meta.next;
     if (meta.hasNext) {
