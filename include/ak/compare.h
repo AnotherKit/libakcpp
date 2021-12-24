@@ -7,16 +7,9 @@
 
 #include <string.h>
 
-#include <concepts>
-
 namespace ak {
 
-template <typename A, typename B = A>
-concept Comparable = requires(A a, B b) {
-  { a < b } -> std::same_as<bool>;
-};
-
-template <typename A, typename B> requires Comparable<A, B>
+template <typename A, typename B>
 bool equals (const A &lhs, const B &rhs) {
   return !(lhs < rhs || rhs < lhs);
 }
