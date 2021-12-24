@@ -16,7 +16,7 @@
 #define AK_DEBUGONLY(x) (x)
 #else
 #define AK_ASSERT(x)
-#define AK_DEBUG(x)
+#define AK_DEBUGONLY(x)
 #endif
 #define AK_LOG(x) AK_DEBUGONLY(std::cerr << (x) << std::endl)
 

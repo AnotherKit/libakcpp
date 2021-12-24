@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "../base.h"
+#include "../compare.h"
 
 // FIXME: remove dupe code of Set and Array. does C++ support mixins?
 namespace ak::file {
@@ -25,12 +26,12 @@ struct Set {
   }
   size_t indexOf (const T &element) {
     size_t index = indexOfInsert(element);
-    if (index >= length || content[index] != element) throw NotFound("Set::indexOf: element not found");
+    if (index >= length || !equals(content[index], element)) throw NotFound("Set::indexOf: element not found");
     return index;
   }
   bool includes (const T &element) {
     size_t ix = indexOfInsert(element);
-    return ix < length && content[ix] == element;
+    return ix < length && equals(content[ix], element);
   }
   void insert (const T &element) {
     if (length == maxLength) throw Overflow("Set::insert: overflow");

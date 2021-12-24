@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "../base.h"
+#include "../compare.h"
 #include "array.h"
 #include "file.h"
 #include "set.h"
@@ -24,7 +25,7 @@ constexpr size_t kDefaultSzChunk = 4096;
  *
  * constraints: KeyType and ValueType need to be comparable.
  *
- * why default szNode = 4096: excerpt of `sudo fdisk -l` on my machine:
+ * why default szChunk = 4096: excerpt of `sudo fdisk -l` on my machine:
  *   Disk /dev/nvme1n1: 1.82 TiB, 2000398934016 bytes, 3907029168 sectors
  *   Disk model: WD_BLACK  SN750 2TB
  *   Units: sectors of 1 * 512 = 512 bytes
@@ -42,13 +43,9 @@ class BpTree {
     KeyType key;
     ValueType value;
     bool operator< (const Pair &that) const {
-      if (key != that.key) return key < that.key;
+      if (key < that.key || that.key < key) return key < that.key;
       return value < that.value;
     }
-    bool operator== (const Pair &that) const {
-      return key == that.key && value == that.value;
-    }
-    bool operator!= (const Pair &that) const { return !(*this == that); }
   };
   /// compares a Payload and a KeyType that key alone is greater than all payloads with this key
   class KeyComparator_ {
@@ -69,7 +66,7 @@ class BpTree {
   // if k > kLengthMax, there must be an overflow.
   static constexpr size_t kLengthMax = 18446744073709000000ULL;
   struct IndexPayload {
-    static constexpr size_t k = (szChunk - 2 * sizeof(NodeId)) / (sizeof(NodeId) + sizeof(Pair)) / 2;
+    static constexpr size_t k = (szChunk - 2 * sizeof(NodeId)) / (sizeof(NodeId) + sizeof(Pair)) / 2 - 1;
     static_assert(k >= 2 && k < kLengthMax);
     bool leaf = false;
     /// for leaf nodes, childs are the indices of data nodes.
@@ -77,7 +74,7 @@ class BpTree {
     Set<Pair, 2 * k> splits;
   };
   struct RecordPayload {
-    static constexpr size_t l = (szChunk - 3 * sizeof(NodeId)) / sizeof(Pair) / 2;
+    static constexpr size_t l = (szChunk - 3 * sizeof(NodeId)) / sizeof(Pair) / 2 - 1;
     static_assert(l >= 2 && l < kLengthMax);
     NodeId prev = 0;
     NodeId next = 0;
@@ -314,13 +311,17 @@ class BpTree {
   void addValuesToVectorForAllKeyFrom_ (std::vector<ValueType> &vec, const KeyType &key, Node node, int first) {
     // we need to declare i outside to see if we have advanced to the last elemene
     int i = first;
-    for (; i < node.length() && node.entries()[i].key == key; ++i) vec.push_back(node.entries()[i].value);
+    for (; i < node.length() && equals(node.entries()[i].key, key); ++i) vec.push_back(node.entries()[i].value);
     if (i == node.length() && node.next() != 0) addValuesToVectorForAllKeyFrom_(vec, key, Node::get(file_, node.next()), 0);
+  }
+  void addEntriesToVector_ (std::vector<std::pair<KeyType, ValueType>> &vec, Node node) {
+    for (int i = 0; i < node.length(); ++i) vec.emplace_back(node.entries()[i].key, node.entries()[i].value);
+    if (node.next() != 0) addEntriesToVector_(vec, Node::get(file_, node.next()));
   }
   std::pair<Node, std::optional<Node>> findFirstChildWithKey_ (const KeyType &key, Node &node) {
     AK_ASSERT(node.type != RECORD);
     size_t ixGreater = std::upper_bound(node.splits().content, node.splits().content + node.length(), key, KeyComparatorLess_()) - node.splits().content;
-    std::optional<Node> cdr = (ixGreater < node.length() && node.splits()[ixGreater].key == key) ? std::optional<Node>(Node::get(file_, node.children()[ixGreater])) : std::nullopt;
+    std::optional<Node> cdr = (ixGreater < node.length() && equals(node.splits()[ixGreater].key, key)) ? std::optional<Node>(Node::get(file_, node.children()[ixGreater])) : std::nullopt;
     size_t ix = ixGreater == 0 ? ixGreater : ixGreater - 1;
     return std::make_pair(Node::get(file_, node.children()[ix]), cdr);
   }
@@ -373,6 +374,7 @@ class BpTree {
   }
   std::optional<ValueType> findOne_ (const KeyType &key, Node node) {
     if (node.type != RECORD) {
+      if (node.length() == 0) return std::nullopt;
       auto [ car, cdr ] = findFirstChildWithKey_(key, node);
       if (!cdr) return findOne_(key, car);
       std::optional<ValueType> res = findOne_(key, car);
@@ -382,15 +384,17 @@ class BpTree {
     size_t ix = std::upper_bound(node.entries().content, node.entries().content + node.length(), key, KeyComparatorLess_()) - node.entries().content;
     if (ix >= node.length()) return std::nullopt;
     Pair entry = node.entries()[ix];
-    if (entry.key != key) return std::nullopt;
+    if (!equals(entry.key, key)) return std::nullopt;
     return entry.value;
   }
   bool includes_ (const Pair &entry, Node node) {
     if (node.type == RECORD) return node.entries().includes(entry);
+    if (node.length() == 0) return false;
     return includes_(entry, Node::get(file_, node.children()[ixInsert_(entry, node)]));
   }
   std::vector<ValueType> findMany_ (const KeyType &key, Node node) {
     if (node.type != RECORD) {
+      if (node.length() == 0) return {};
       auto [ car, cdr ] = findFirstChildWithKey_(key, node);
       if (!cdr) return findMany_(key, car);
       std::vector<ValueType> res = findMany_(key, car);
@@ -401,6 +405,15 @@ class BpTree {
     if (ix >= node.length()) return {};
     std::vector<ValueType> res;
     addValuesToVectorForAllKeyFrom_(res, key, node, ix);
+    return res;
+  }
+  std::vector<std::pair<KeyType, ValueType>> findAll_ (Node node) {
+    if (node.type != RECORD) {
+      if (node.length() == 0) return {};
+      return findAll_(Node::get(file_, node.children()[0]));
+    }
+    std::vector<std::pair<KeyType, ValueType>> res;
+    addEntriesToVector_(res, node);
     return res;
   }
   void init_ () {
@@ -443,6 +456,9 @@ class BpTree {
   }
   std::vector<ValueType> findMany (const KeyType &key) {
     return findMany_(key, Node::root(*this));
+  }
+  std::vector<std::pair<KeyType, ValueType>> findAll () {
+    return findAll_(Node::root(*this));
   }
   bool includes (const KeyType &key, const ValueType &value) {
     return includes_({ .key = key, .value = value }, Node::root(*this));
