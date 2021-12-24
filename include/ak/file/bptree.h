@@ -18,7 +18,6 @@
 #endif
 
 namespace ak::file {
-constexpr size_t kDefaultSzChunk = 4096;
 
 /**
  * an implementation of the B+ tree. It stores key and value together in order to support duplicate keys.
