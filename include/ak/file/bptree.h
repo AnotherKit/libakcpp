@@ -71,7 +71,7 @@ class BpTree {
   // if k > kLengthMax, there must be an overflow.
   static constexpr size_t kLengthMax = 18446744073709000000ULL;
   struct IndexPayload {
-    static constexpr size_t k = (szChunk - 2 * sizeof(NodeId)) / (sizeof(NodeId) + sizeof(Pair)) / 2;
+    static constexpr size_t k = (szChunk - 2 * sizeof(NodeId)) / (sizeof(NodeId) + sizeof(Pair)) / 2 - 1;
     static_assert(k >= 2 && k < kLengthMax);
     bool leaf = false;
     /// for leaf nodes, childs are the indices of data nodes.
@@ -79,7 +79,7 @@ class BpTree {
     Set<Pair, 2 * k> splits;
   };
   struct RecordPayload {
-    static constexpr size_t l = (szChunk - 3 * sizeof(NodeId)) / sizeof(Pair) / 2;
+    static constexpr size_t l = (szChunk - 3 * sizeof(NodeId)) / sizeof(Pair) / 2 - 1;
     static_assert(l >= 2 && l < kLengthMax);
     NodeId prev = 0;
     NodeId next = 0;
