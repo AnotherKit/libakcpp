@@ -51,6 +51,8 @@ class Validator<std::string> {
   /// expect(std::string("Hello World")).toPartiallyMatch(R"(Hel+o)")
   const Validator &toPartiallyMatch (const std::regex &pattern) const;
   const Validator &toPartiallyMatch (const std::string &pattern) const;
+  /// expect(std::string("Hello World")).toBeOfLength(11);
+  const Validator &toBeOfLength (size_t length) const;
   /// expect(std::string("Hello World")).toBeShorterThan(20)
   const Validator &toBeShorterThan (size_t length) const;
   /// expect(std::string("Hello World")).toBeLongerThan(10)

@@ -26,7 +26,7 @@ struct Set {
   }
   size_t indexOf (const T &element) {
     size_t index = indexOfInsert(element);
-    if (index >= length || equals(content[index], element)) throw NotFound("Set::indexOf: element not found");
+    if (index >= length || !equals(content[index], element)) throw NotFound("Set::indexOf: element not found");
     return index;
   }
   bool includes (const T &element) {

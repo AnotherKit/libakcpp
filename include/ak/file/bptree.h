@@ -319,6 +319,10 @@ class BpTree {
     for (; i < node.length() && equals(node.entries()[i].key, key); ++i) vec.push_back(node.entries()[i].value);
     if (i == node.length() && node.next() != 0) addValuesToVectorForAllKeyFrom_(vec, key, Node::get(file_, node.next()), 0);
   }
+  void addEntriesToVector_ (std::vector<std::pair<KeyType, ValueType>> &vec, Node node) {
+    for (int i = 0; i < node.length(); ++i) vec.emplace_back(node.entries()[i].key, node.entries()[i].value);
+    if (node.next() != 0) addEntriesToVector_(vec, Node::get(file_, node.next()));
+  }
   std::pair<Node, std::optional<Node>> findFirstChildWithKey_ (const KeyType &key, Node &node) {
     AK_ASSERT(node.type != RECORD);
     size_t ixGreater = std::upper_bound(node.splits().content, node.splits().content + node.length(), key, KeyComparatorLess_()) - node.splits().content;
@@ -375,6 +379,7 @@ class BpTree {
   }
   std::optional<ValueType> findOne_ (const KeyType &key, Node node) {
     if (node.type != RECORD) {
+      if (node.length() == 0) return std::nullopt;
       auto [ car, cdr ] = findFirstChildWithKey_(key, node);
       if (!cdr) return findOne_(key, car);
       std::optional<ValueType> res = findOne_(key, car);
@@ -389,10 +394,12 @@ class BpTree {
   }
   bool includes_ (const Pair &entry, Node node) {
     if (node.type == RECORD) return node.entries().includes(entry);
+    if (node.length() == 0) return false;
     return includes_(entry, Node::get(file_, node.children()[ixInsert_(entry, node)]));
   }
   std::vector<ValueType> findMany_ (const KeyType &key, Node node) {
     if (node.type != RECORD) {
+      if (node.length() == 0) return {};
       auto [ car, cdr ] = findFirstChildWithKey_(key, node);
       if (!cdr) return findMany_(key, car);
       std::vector<ValueType> res = findMany_(key, car);
@@ -403,6 +410,15 @@ class BpTree {
     if (ix >= node.length()) return {};
     std::vector<ValueType> res;
     addValuesToVectorForAllKeyFrom_(res, key, node, ix);
+    return res;
+  }
+  std::vector<std::pair<KeyType, ValueType>> findAll_ (Node node) {
+    if (node.type != RECORD) {
+      if (node.length() == 0) return {};
+      return findAll_(Node::get(file_, node.children()[0]));
+    }
+    std::vector<std::pair<KeyType, ValueType>> res;
+    addEntriesToVector_(res, node);
     return res;
   }
   void init_ () {
@@ -445,6 +461,9 @@ class BpTree {
   }
   std::vector<ValueType> findMany (const KeyType &key) {
     return findMany_(key, Node::root(*this));
+  }
+  std::vector<std::pair<KeyType, ValueType>> findAll () {
+    return findAll_(Node::root(*this));
   }
   bool includes (const KeyType &key, const ValueType &value) {
     return includes_({ .key = key, .value = value }, Node::root(*this));

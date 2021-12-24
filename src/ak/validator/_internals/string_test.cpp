@@ -14,6 +14,7 @@ int main () {
   v.Not().toBe("6");
   v.toBeConsistedOf("23").butNot().toBeConsistedOf("3");
   v.toBeGreaterThan("123").toBeLessThan("333");
+  v.toBeOfLength(3).butNot().toBeOfLength(4);
   v.toBeLongerThan(2).butNot().toBeLongerThan(3);
   v.toMatch("23+").butNot().toMatch("23");
   v.toPartiallyMatch("3").butNot().toPartiallyMatch("6");

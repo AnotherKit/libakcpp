@@ -16,8 +16,6 @@ concept Comparable = requires(A a, B b) {
   { a < b } -> std::same_as<bool>;
 };
 
-template <typename A, typename B>
-bool equals (const A &lhs, const B &rhs);
 template <typename A, typename B> requires Comparable<A, B>
 bool equals (const A &lhs, const B &rhs) {
   return !(lhs < rhs || rhs < lhs);

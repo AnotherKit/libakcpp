@@ -65,6 +65,11 @@ const Validator<std::string> &Validator<std::string>::toPartiallyMatch (const st
   return toPartiallyMatch(std::regex(pattern));
 }
 
+const Validator<std::string> &Validator<std::string>::toBeOfLength (size_t length) const {
+  validate(value_.length() == length, inverse_);
+  return *this;
+}
+
 const Validator<std::string> &Validator<std::string>::toBeShorterThan (size_t length) const {
   validate(value_.length() < length, inverse_);
   return *this;
