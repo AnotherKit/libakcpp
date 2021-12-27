@@ -5,8 +5,6 @@
 #ifndef AK_LIB_COMPARE_H_
 #define AK_LIB_COMPARE_H_
 
-#include <string.h>
-
 #include <concepts>
 
 namespace ak {

@@ -1,0 +1,22 @@
+const fs = require('fs').promises
+const path = require('path')
+const { qw } = require('.')
+
+qw(path.resolve(__dirname, 'src/index.js'))
+  ._(fs.readFile)
+  ._.await()
+  .toString()
+  .split('\n')
+  .map(x => x.trim())
+  .filter(Boolean)
+  .sort()
+  .join('\n')
+  ._(c => 'Code:\n\n```\n' + c + '\n```\n')
+  ._.log()
+  ._(f => fs.writeFile('qw.md', f))
+  ._.await()
+  ._.sideEffect(() => console.log('File writing done!'))
+  ._(() => new Promise(r => setTimeout(r, 5000, 'dilation of 5 seconds')))
+  ._.await()
+  ._.value
+  .then(console.log)
