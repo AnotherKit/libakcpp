@@ -12,6 +12,8 @@
 build
 *_test
 
+node_modules
+
 DartConfiguration.tcl
 
 CMakeLists.txt.user
