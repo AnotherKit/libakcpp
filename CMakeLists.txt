@@ -11,6 +11,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
 set(AKCPP_SOURCES
   src/ak/base.cpp
+  src/ak/chalk.cpp
   src/ak/validator/_internals/common.cpp
   src/ak/validator/_internals/string.cpp
 )
@@ -22,6 +23,7 @@ set_target_properties(akcppso PROPERTIES OUTPUT_NAME akcpp)
 enable_testing()
 set(AKCPP_TEST_SOURCES
   src/ak/compare_test.cpp
+  src/ak/chalk_test.cpp
   src/ak/validator_test.cpp
   src/ak/validator/_internals/string_test.cpp
 )

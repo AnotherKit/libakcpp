@@ -1,0 +1,25 @@
+{
+  "name": "@alan-liang/qw",
+  "version": "0.0.1",
+  "description": "Data pipeline utility",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alan-Liang/qw.git"
+  },
+  "keywords": [
+    "pipe",
+    "compose",
+    "data",
+    "flow"
+  ],
+  "author": "Alan-Liang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Alan-Liang/qw/issues"
+  },
+  "homepage": "https://github.com/Alan-Liang/qw#readme"
+}

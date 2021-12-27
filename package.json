@@ -1,0 +1,12 @@
+{
+  "name": "libakcpp",
+  "version": "0.0.0-dev",
+  "description": "AnotherKit C++ Library",
+  "repository": "git@github.com:AnotherKit/libakcpp.git",
+  "author": "Alan Liang <alan-liang@keeer.net>",
+  "license": "GPL-3.0",
+  "private": true,
+  "dependencies": {
+    "@alan-liang/qw": "^0.0.1"
+  }
+}
