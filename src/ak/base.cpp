@@ -1,6 +1,6 @@
 #include "../../include/ak/base.h"
 
 namespace ak {
-const char *Exception::what () const noexcept { return message; }
+auto Exception::what () const noexcept -> const char * { return message; }
 Exception::~Exception () = default;
 } // namespace ak

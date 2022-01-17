@@ -26,24 +26,24 @@ struct Varchar {
   template<int A>
   Varchar (const Varchar<A> &that) { *this = that; }
   operator std::string () const { return std::string(content); }
-  [[nodiscard]] std::string str () const { return std::string(*this); }
+  [[nodiscard]] auto str () const -> std::string { return std::string(*this); }
   template <int A>
-  Varchar operator= (const Varchar<A> &that) {
+  auto operator= (const Varchar<A> &that) -> Varchar {
     if (that.str().length() > maxLength) throw Overflow("Varchar length overflow");
     strcpy(content, that.content);
     return *this;
   }
   template <int A>
-  std::weak_ordering operator<=> (const Varchar<A> &that) const {
+  auto operator<=> (const Varchar<A> &that) const -> std::weak_ordering {
     int res = strcmp(content, that.content);
     if (res < 0) return std::weak_ordering::less;
     if (res > 0) return std::weak_ordering::greater;
     return std::weak_ordering::equivalent;
   }
   template <int A>
-  bool operator== (const Varchar<A> &that) const { return (*this <=> that) == std::weak_ordering::equivalent; };
+  auto operator== (const Varchar<A> &that) const -> bool { return (*this <=> that) == std::weak_ordering::equivalent; };
   template <int A>
-  bool operator!= (const Varchar<A> &that) const { return !(*this == that); }
+  auto operator!= (const Varchar<A> &that) const -> bool { return !(*this == that); }
 };
 } // namespace ak::file
 

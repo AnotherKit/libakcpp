@@ -14,26 +14,26 @@ namespace ak::file {
 template <typename T, size_t maxLength>
 struct Set {
  private:
-  void boundsCheck_ (size_t index) {
+  auto boundsCheck_ (size_t index) -> void {
     if (index >= length) throw OutOfBounds("Set: overflow or underflow");
   }
  public:
   Set () = default;
   size_t length = 0;
   T content[maxLength];
-  size_t indexOfInsert (const T &element) {
+  auto indexOfInsert (const T &element) -> size_t {
     return std::lower_bound(content, content + length, element) - content;
   }
-  size_t indexOf (const T &element) {
+  auto indexOf (const T &element) -> size_t {
     size_t index = indexOfInsert(element);
     if (index >= length || !equals(content[index], element)) throw NotFound("Set::indexOf: element not found");
     return index;
   }
-  bool includes (const T &element) {
+  auto includes (const T &element) -> bool {
     size_t ix = indexOfInsert(element);
     return ix < length && equals(content[ix], element);
   }
-  void insert (const T &element) {
+  auto insert (const T &element) -> void {
     if (length == maxLength) throw Overflow("Set::insert: overflow");
     size_t offset = indexOfInsert(element);
     if (offset != length) memmove(&content[offset + 1], &content[offset], (length - offset) * sizeof(content[0]));
@@ -41,34 +41,34 @@ struct Set {
     ++length;
   }
 
-  void remove (const T &element) { removeAt(indexOf(element)); }
-  void removeAt (size_t offset) {
+  auto remove (const T &element) -> void { removeAt(indexOf(element)); }
+  auto removeAt (size_t offset) -> void {
     boundsCheck_(offset);
     if (offset != length - 1) memmove(&content[offset], &content[offset + 1], (length - offset - 1) * sizeof(content[0]));
     --length;
   }
-  void clear () { length = 0; }
+  auto clear () -> void { length = 0; }
 
-  void copyFrom (const Set &other, size_t fromIndex, size_t toIndex, size_t count) {
+  auto copyFrom (const Set &other, size_t fromIndex, size_t toIndex, size_t count) -> void {
     if (this == &other) memmove(&content[toIndex], &content[fromIndex], count * sizeof(content[0]));
     else memcpy(&content[toIndex], &other.content[fromIndex], count * sizeof(content[0]));
   }
 
-  T &operator[] (size_t index) { boundsCheck_(index); return content[index]; }
-  const T &operator[] (size_t index) const { boundsCheck_(index); return content[index]; }
+  auto &operator[] (size_t index) -> T { boundsCheck_(index); return content[index]; }
+  auto operator[] (size_t index) const -> const T & { boundsCheck_(index); return content[index]; }
 
-  T pop () {
+  auto pop () -> T {
     if (length == 0) throw Underflow("Set::pop: underflow");
     return content[--length];
   }
-  T shift () {
+  auto shift () -> T {
     if (length == 0) throw Underflow("Set::pop: underflow");
     T result = content[0];
     removeAt(0);
     return result;
   }
 
-  void forEach (const std::function<void (const T &element)> &callback) {
+  auto forEach (const std::function<void (const T &element)> &callback) -> void {
     for (int i = 0; i < length; ++i) callback(content[i]);
   }
 };

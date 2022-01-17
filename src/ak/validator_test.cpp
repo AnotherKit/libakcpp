@@ -4,7 +4,7 @@
 
 using ak::validator::expect;
 
-int main () {
+auto main () -> int {
   expect(233).toBe(233);
   expect(666).Not().toBe(233);
   std::string s = "233";

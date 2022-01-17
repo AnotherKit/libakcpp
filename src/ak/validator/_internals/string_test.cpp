@@ -6,7 +6,7 @@
 using std::string;
 using ak::validator::_internals::Validator;
 
-int main () {
+auto main () -> int {
   string s = "233";
   string s1 = s;
   Validator<std::string> v(s);

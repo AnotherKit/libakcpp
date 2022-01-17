@@ -51,7 +51,7 @@ const colors = {
 }
 
 const makeFunction = (name, open, close, replace) => `
-std::string ${name} (const std::string &str) {
+auto ${name} (const std::string &str) -> std::string {
   return filterEmpty(${JSON.stringify(`\x1b[${open}m`)}, ${JSON.stringify(`\x1b[${close}m`)}, str${replace ? ', ' + JSON.stringify(replace) : ''});
 }
 `

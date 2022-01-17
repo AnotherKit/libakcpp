@@ -6,7 +6,7 @@
 namespace ak::validator {
 
 template <typename T>
-_internals::Validator<T> expect (const T &value) { return value; }
+auto expect (const T &value) -> _internals::Validator<T> { return value; }
 
 } // namespace ak::validator
 

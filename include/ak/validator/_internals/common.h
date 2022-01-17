@@ -20,16 +20,16 @@
 
 namespace ak::validator::_internals {
 
-void validate (bool t, bool inverse);
+auto validate (bool t, bool inverse) -> void;
 
 template <typename T>
 class Common {
  public:
-  static void toBe (const T &lhs, const T &rhs, bool inverse) {
+  static auto toBe (const T &lhs, const T &rhs, bool inverse) -> void {
     validate(equals(lhs, rhs), inverse);
   }
   /// expect(1).toBeOneOf({ 1, 2, 3 })
-  static void toBeOneOf (const T &lhs, const std::initializer_list<T> &rhs, bool inverse) {
+  static auto toBeOneOf (const T &lhs, const std::initializer_list<T> &rhs, bool inverse) -> void {
     bool includes = false;
     for (const auto &el : rhs) if (equals(lhs, el)) {
       includes = true;
@@ -37,10 +37,10 @@ class Common {
     }
     validate(includes, inverse);
   }
-  static void toBeLessThan (const T &lhs, const T &rhs, bool inverse) {
+  static auto toBeLessThan (const T &lhs, const T &rhs, bool inverse) -> void {
     validate(lhs < rhs, inverse);
   }
-  static void toBeGreaterThan (const T &lhs, const T &rhs, bool inverse) {
+  static auto toBeGreaterThan (const T &lhs, const T &rhs, bool inverse) -> void {
     validate(rhs < lhs, inverse);
   }
 };
@@ -54,31 +54,31 @@ class Validator {
   Validator () = delete;
   Validator (const T &value) : value_(value) {}
 
-  const Validator &toBe (const T &value) const {
+  auto toBe (const T &value) const -> const Validator & {
     Common<T>::toBe(value_, value, inverse_);
     return *this;
   }
-  const Validator &toBeOneOf (const std::initializer_list<T> &list) const {
+  auto toBeOneOf (const std::initializer_list<T> &list) const -> const Validator & {
     Common<T>::toBeOneOf(value_, list, inverse_);
     return *this;
   }
 
-  const Validator &toBeLessThan (const T &value) const {
+  auto toBeLessThan (const T &value) const -> const Validator & {
     Common<T>::toBeLessThan(value_, value, inverse_);
     return *this;
   }
-  const Validator &toBeGreaterThan (const T &value) const {
+  auto toBeGreaterThan (const T &value) const -> const Validator & {
     Common<T>::toBeGreaterThan(value_, value, inverse_);
     return *this;
   }
 
   /// expect(2).Not().toBe(3)
-  Validator Not () const {
+  auto Not () const -> Validator {
     Validator v(value_);
     v.inverse_ = true;
     return v;
   }
-  Validator butNot () const { return Not(); }
+  auto butNot () const -> Validator { return Not(); }
 };
 
 } // namespace ak::validator::_internals

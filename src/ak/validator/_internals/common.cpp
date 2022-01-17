@@ -2,7 +2,7 @@
 
 namespace ak::validator::_internals {
 
-void validate (bool t, bool inverse) {
+auto validate (bool t, bool inverse) -> void {
   if (inverse == t) throw ValidationException();
 }
 

@@ -15,7 +15,7 @@ concept Comparable = requires(A a, B b) {
 };
 
 template <typename A, typename B> requires Comparable<A, B>
-bool equals (const A &lhs, const B &rhs) {
+auto equals (const A &lhs, const B &rhs) -> bool {
   return !(lhs < rhs || rhs < lhs);
 }
 

@@ -26,15 +26,15 @@ class File {
     Metadata (size_t next, bool hasNext) : next(next), hasNext(hasNext) {}
   };
   static_assert(szChunk > sizeof(Metadata));
-  Metadata meta_ () {
+  auto meta_ () -> Metadata {
     Metadata retval;
     get(&retval, -1, sizeof(retval));
     return retval;
   }
-  size_t offset_ (size_t index) { return (index + 1) * szChunk; }
+  auto offset_ (size_t index) -> size_t { return (index + 1) * szChunk; }
   std::fstream file_;
   std::unordered_map<size_t, char *> cache_;
-  void putCache_ (const void *buf, size_t index, size_t n) {
+  auto putCache_ (const void *buf, size_t index, size_t n) -> void {
     char *cache = new char[n];
     memcpy(cache, buf, n);
     if (cache_.count(index) > 0) delete[] cache_[index];
@@ -61,7 +61,7 @@ class File {
   ~File () { clearCache(); }
 
   /// read n bytes at index into buf.
-  void get (void *buf, size_t index, size_t n) {
+  auto get (void *buf, size_t index, size_t n) -> void {
     if (index != -1 && cache_.count(index) > 0) {
       memcpy(buf, cache_[index], n);
       return;
@@ -72,7 +72,7 @@ class File {
     if (index != -1) putCache_(buf, index, n);
   }
   /// write n bytes at index from buf.
-  void set (const void *buf, size_t index, size_t n) {
+  auto set (const void *buf, size_t index, size_t n) -> void {
     if (index != -1) {
       // dirty check
       if (cache_.count(index) > 0 && memcmp(buf, cache_[index], n) == 0) return;
@@ -83,7 +83,7 @@ class File {
     AK_ASSERT(file_.good());
   }
   /// @returns the stored index of the object
-  size_t push (const void *buf, size_t n) {
+  auto push (const void *buf, size_t n) -> size_t {
     Metadata meta = meta_();
     size_t id = meta.next;
     if (meta.hasNext) {
@@ -97,7 +97,7 @@ class File {
     set(buf, id, n);
     return id;
   }
-  void remove (size_t index) {
+  auto remove (size_t index) -> void {
     Metadata meta = meta_();
     set(&meta, index, sizeof(meta));
     Metadata newMeta(index, true);
@@ -106,7 +106,7 @@ class File {
     cache_.erase(index);
   }
 
-  void clearCache () {
+  auto clearCache () -> void {
     for (const auto &[ _, ptr ] : cache_) delete[] ptr;
     cache_.clear();
   }
@@ -123,16 +123,16 @@ class ManagedObject {
   File<szChunk> *file_;
   size_t id_ = -1;
   ManagedObject (File<szChunk> &file, size_t id) : file_(&file), id_(id) {}
-  static size_t getSize_ () { return offsetof(T, _end) - offsetof(T, _start); }
-  static size_t getOffset_ () { return offsetof(T, _start); }
+  static auto getSize_ () -> size_t { return offsetof(T, _end) - offsetof(T, _start); }
+  static auto getOffset_ () -> size_t { return offsetof(T, _start); }
  public:
   ManagedObject () = delete;
   ManagedObject (File<szChunk> &file) : file_(&file) {}
   virtual ~ManagedObject () = default;
 
-  size_t id () { return id_; }
+  auto id () -> size_t { return id_; }
 
-  static T get (File<szChunk> &file, size_t id) {
+  static auto get (File<szChunk> &file, size_t id) -> T {
     char buf[sizeof(T)];
     file.get(buf + getOffset_(), id, getSize_());
     ManagedObject &result = *reinterpret_cast<ManagedObject *>(buf);
@@ -140,15 +140,15 @@ class ManagedObject {
     result.id_ = id;
     return *reinterpret_cast<T *>(buf);
   }
-  void save () {
+  auto save () -> void {
     if (id_ != -1) throw Exception("Already saved");
     id_ = file_->push(reinterpret_cast<char *>(this) + getOffset_(), getSize_());
   }
-  void update () {
+  auto update () -> void {
     if (id_ == -1) throw Exception("Not saved");
     file_->set(reinterpret_cast<char *>(this) + getOffset_(), id_, getSize_());
   }
-  void destroy () {
+  auto destroy () -> void {
     if (id_ == -1) throw Exception("Not saved");
     file_->remove(id_);
     id_ = -1;

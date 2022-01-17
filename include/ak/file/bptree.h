@@ -47,7 +47,7 @@ class BpTree {
   struct Pair {
     KeyType key;
     ValueType value;
-    bool operator< (const Pair &that) const {
+    auto operator< (const Pair &that) const -> bool {
       if (key < that.key || that.key < key) return key < that.key;
       return value < that.value;
     }
@@ -55,14 +55,14 @@ class BpTree {
   /// compares a Payload and a KeyType that key alone is greater than all payloads with this key
   class KeyComparator_ {
    public:
-    bool operator() (const Pair &lhs, const KeyType &rhs) { return !(rhs < lhs.key); }
-    bool operator() (const KeyType &lhs, const Pair &rhs) { return lhs < rhs.key; }
+    auto operator() (const Pair &lhs, const KeyType &rhs) const -> bool { return !(rhs < lhs.key); }
+    auto operator() (const KeyType &lhs, const Pair &rhs) const -> bool { return lhs < rhs.key; }
   };
   /// compares a Payload and a KeyType that key alone is less than all payloads with this key
   class KeyComparatorLess_ {
    public:
-    bool operator() (const Pair &lhs, const KeyType &rhs) { return lhs.key < rhs; }
-    bool operator() (const KeyType &lhs, const Pair &rhs) { return !(rhs.key < lhs); }
+    auto operator() (const Pair &lhs, const KeyType &rhs) const -> bool { return lhs.key < rhs; }
+    auto operator() (const KeyType &lhs, const Pair &rhs) const -> bool { return !(rhs.key < lhs); }
   };
 
   using NodeId = unsigned int;
@@ -98,12 +98,12 @@ class BpTree {
     static_assert(sizeof(NodeType) + sizeof(NodePayload) <= szChunk);
 
     // dynamically type-safe accessors
-    bool &leaf () { AK_ASSERT(type != RECORD); return payload.index.leaf; }
-    Array<NodeId, 2 * IndexPayload::k> &children () { AK_ASSERT(type != RECORD); return payload.index.children; }
-    Set<Pair, 2 * IndexPayload::k> &splits () { AK_ASSERT(type != RECORD); return payload.index.splits; }
-    NodeId &prev () { AK_ASSERT(type == RECORD); return payload.record.prev; }
-    NodeId &next () { AK_ASSERT(type == RECORD); return payload.record.next; }
-    Set<Pair, 2 * RecordPayload::l> &entries () { AK_ASSERT(type == RECORD); return payload.record.entries; }
+    auto leaf () -> bool & { AK_ASSERT(type != RECORD); return payload.index.leaf; }
+    auto children () -> Array<NodeId, 2 * IndexPayload::k> & { AK_ASSERT(type != RECORD); return payload.index.children; }
+    auto splits () -> Set<Pair, 2 * IndexPayload::k> & { AK_ASSERT(type != RECORD); return payload.index.splits; }
+    auto prev () -> NodeId & { AK_ASSERT(type == RECORD); return payload.record.prev; }
+    auto next () -> NodeId & { AK_ASSERT(type == RECORD); return payload.record.next; }
+    auto entries () -> Set<Pair, 2 * RecordPayload::l> & { AK_ASSERT(type == RECORD); return payload.record.entries; }
 
     Node (BpTree &tree, NodeType type) : ManagedObject<Node, szChunk>(tree.file_), type(type) {
       if (type == RECORD) {
@@ -120,29 +120,29 @@ class BpTree {
       }
     }
 
-    static Node root (BpTree &tree) { return Node::get(tree.file_, 0); }
+    static auto root (BpTree &tree) -> Node { return Node::get(tree.file_, 0); }
 
-    size_t halfLimit () {
+    auto halfLimit () -> size_t {
       return type == RECORD ? RecordPayload::l : IndexPayload::k;
     }
-    size_t length () {
+    auto length () -> size_t {
       return type == RECORD ? payload.record.entries.length : payload.index.children.length;
     }
-    bool shouldSplit () { return length() == 2 * halfLimit(); }
-    bool shouldMerge () { return length() < halfLimit(); }
-    Pair lowerBound () {
+    auto shouldSplit () -> bool { return length() == 2 * halfLimit(); }
+    auto shouldMerge () -> bool { return length() < halfLimit(); }
+    auto lowerBound () -> Pair {
       return type == RECORD ? payload.record.entries[0] : payload.index.splits[0];
     }
   };
 
   // helper functions
-  size_t ixInsert_ (const Pair &entry, Node &node) {
+  auto ixInsert_ (const Pair &entry, Node &node) -> size_t {
     AK_ASSERT(node.type != RECORD);
     auto &splits = node.splits();
     size_t ix = std::upper_bound(splits.content, splits.content + splits.length, entry) - splits.content;
     return ix == 0 ? ix : ix - 1;
   }
-  void splitRoot_ (Node &node) {
+  auto splitRoot_ (Node &node) -> void {
     Node left(*this, INTERMEDIATE), right(*this, INTERMEDIATE);
 
     // copy children and splits
@@ -166,7 +166,7 @@ class BpTree {
     node.splits().insert(left.lowerBound());
     node.splits().insert(right.lowerBound());
   }
-  void split_ (Node &node, Node &parent, size_t ixChild) {
+  auto split_ (Node &node, Node &parent, size_t ixChild) -> void {
     AK_ASSERT(node.shouldSplit());
 #ifdef AK_DEBUG_BPTREE
     std::cerr << "[Split] " << node.id() << " (parent " << parent.id() << ")" << std::endl;
@@ -211,7 +211,7 @@ class BpTree {
   }
 
   template <typename A, typename B>
-  static void unshift_ (A &to, B &from, size_t k) {
+  static auto unshift_ (A &to, B &from, size_t k) -> void {
     // we now have [b[0],...,b[k-1]] and [a[0]...a[k-2]], want a -> [b[0],...,b[k-1],a[0],...,a[k-2]]
     to.copyFrom(to, 0, k, k - 1);
     to.copyFrom(from, 0, 0, k);
@@ -219,12 +219,12 @@ class BpTree {
     from.length = 0;
   }
   template <typename A, typename B>
-  static void push_ (A &to, B &from, size_t k) {
+  static auto push_ (A &to, B &from, size_t k) -> void {
     to.copyFrom(from, 0, k - 1, k);
     to.length += from.length;
     from.length = 0;
   }
-  void merge_ (Node &node, Node &parent, size_t ixChild) {
+  auto merge_ (Node &node, Node &parent, size_t ixChild) -> void {
     AK_ASSERT(node.shouldMerge());
 #ifdef AK_DEBUG_BPTREE
     std::cerr << "[Merge] " << node.id() << " (parent " << parent.id() << ")" << std::endl;
@@ -313,17 +313,17 @@ class BpTree {
   }
 
   // FIXME: lengthy function name
-  void addValuesToVectorForAllKeyFrom_ (std::vector<ValueType> &vec, const KeyType &key, Node node, int first) {
+  auto addValuesToVectorForAllKeyFrom_ (std::vector<ValueType> &vec, const KeyType &key, Node node, int first) -> void {
     // we need to declare i outside to see if we have advanced to the last elemene
     int i = first;
     for (; i < node.length() && equals(node.entries()[i].key, key); ++i) vec.push_back(node.entries()[i].value);
     if (i == node.length() && node.next() != 0) addValuesToVectorForAllKeyFrom_(vec, key, Node::get(file_, node.next()), 0);
   }
-  void addEntriesToVector_ (std::vector<std::pair<KeyType, ValueType>> &vec, Node node) {
+  auto addEntriesToVector_ (std::vector<std::pair<KeyType, ValueType>> &vec, Node node) -> void {
     for (int i = 0; i < node.length(); ++i) vec.emplace_back(node.entries()[i].key, node.entries()[i].value);
     if (node.next() != 0) addEntriesToVector_(vec, Node::get(file_, node.next()));
   }
-  std::pair<Node, std::optional<Node>> findFirstChildWithKey_ (const KeyType &key, Node &node) {
+  auto findFirstChildWithKey_ (const KeyType &key, Node &node) -> std::pair<Node, std::optional<Node>> {
     AK_ASSERT(node.type != RECORD);
     size_t ixGreater = std::upper_bound(node.splits().content, node.splits().content + node.length(), key, KeyComparatorLess_()) - node.splits().content;
     std::optional<Node> cdr = (ixGreater < node.length() && equals(node.splits()[ixGreater].key, key)) ? std::optional<Node>(Node::get(file_, node.children()[ixGreater])) : std::nullopt;
@@ -332,7 +332,7 @@ class BpTree {
   }
 
   // operation functions
-  void insert_ (const Pair &entry, Node &node) {
+  auto insert_ (const Pair &entry, Node &node) -> void {
     if (node.type == RECORD) {
       node.entries().insert(entry);
       AK_ASSERT(node.entries().length <= 2 * RecordPayload::l);
@@ -357,7 +357,7 @@ class BpTree {
     if (nodeToInsert.shouldSplit()) split_(nodeToInsert, node, ix);
     nodeToInsert.update();
   }
-  void remove_ (const Pair &entry, Node &node) {
+  auto remove_ (const Pair &entry, Node &node) -> void {
     if (node.type == RECORD) {
       node.entries().remove(entry);
       return;
@@ -377,7 +377,7 @@ class BpTree {
     if (child.shouldMerge()) merge_(child, node, ix);
     child.update();
   }
-  std::optional<ValueType> findOne_ (const KeyType &key, Node node) {
+  auto findOne_ (const KeyType &key, Node node) -> std::optional<ValueType> {
     if (node.type != RECORD) {
       if (node.length() == 0) return std::nullopt;
       auto [ car, cdr ] = findFirstChildWithKey_(key, node);
@@ -392,12 +392,12 @@ class BpTree {
     if (!equals(entry.key, key)) return std::nullopt;
     return entry.value;
   }
-  bool includes_ (const Pair &entry, Node node) {
+  auto includes_ (const Pair &entry, Node node) -> bool {
     if (node.type == RECORD) return node.entries().includes(entry);
     if (node.length() == 0) return false;
     return includes_(entry, Node::get(file_, node.children()[ixInsert_(entry, node)]));
   }
-  std::vector<ValueType> findMany_ (const KeyType &key, Node node) {
+  auto findMany_ (const KeyType &key, Node node) -> std::vector<ValueType> {
     if (node.type != RECORD) {
       if (node.length() == 0) return {};
       auto [ car, cdr ] = findFirstChildWithKey_(key, node);
@@ -412,7 +412,7 @@ class BpTree {
     addValuesToVectorForAllKeyFrom_(res, key, node, ix);
     return res;
   }
-  std::vector<std::pair<KeyType, ValueType>> findAll_ (Node node) {
+  auto findAll_ (Node node) -> std::vector<std::pair<KeyType, ValueType>> {
     if (node.type != RECORD) {
       if (node.length() == 0) return {};
       return findAll_(Node::get(file_, node.children()[0]));
@@ -421,14 +421,14 @@ class BpTree {
     addEntriesToVector_(res, node);
     return res;
   }
-  void init_ () {
+  auto init_ () -> void {
     Node root(*this, ROOT);
     root.leaf() = true;
     root.save();
     AK_ASSERT(root.id() == 0);
   }
 #ifdef AK_DEBUG
-  void print_ (Node node) {
+  auto print_ (Node node) -> void {
     if (node.type == RECORD) {
       std::cerr << "[Record " << node.id() << " (" << node.length() << "/" << 2 * RecordPayload::l - 1 << ")]";
       for (int i = 0; i < node.length(); ++i) std::cerr << " (" << std::string(node.entries()[i].key) << ", " << node.entries()[i].value << ")";
@@ -444,35 +444,35 @@ class BpTree {
  public:
   BpTree () = delete;
   BpTree (const char *filename) : file_(filename, [this] () { init_(); }) {}
-  void insert (const KeyType &key, const ValueType &value) {
+  auto insert (const KeyType &key, const ValueType &value) -> void {
     Node root = Node::root(*this);
     insert_({ .key = key, .value = value }, root);
     if (root.shouldSplit()) split_(root, root, 0);
     root.update();
   }
-  void remove (const KeyType &key, const ValueType &value) {
+  auto remove (const KeyType &key, const ValueType &value) -> void {
     Node root = Node::root(*this);
     remove_({ .key = key, .value = value }, root);
     if (root.shouldMerge()) merge_(root, root, 0);
     root.update();
   }
-  std::optional<ValueType> findOne (const KeyType &key) {
+  auto findOne (const KeyType &key) -> std::optional<ValueType> {
     return findOne_(key, Node::root(*this));
   }
-  std::vector<ValueType> findMany (const KeyType &key) {
+  auto findMany (const KeyType &key) -> std::vector<ValueType> {
     return findMany_(key, Node::root(*this));
   }
-  std::vector<std::pair<KeyType, ValueType>> findAll () {
+  auto findAll () -> std::vector<std::pair<KeyType, ValueType>> {
     return findAll_(Node::root(*this));
   }
-  bool includes (const KeyType &key, const ValueType &value) {
+  auto includes (const KeyType &key, const ValueType &value) -> bool {
     return includes_({ .key = key, .value = value }, Node::root(*this));
   }
 
-  void clearCache () { file_.clearCache(); }
+  auto clearCache () -> void { file_.clearCache(); }
 
 #ifdef AK_DEBUG
-  void print () { print_(Node::root(*this)); }
+  auto print () -> void { print_(Node::root(*this)); }
 #endif
 };
 } // namespace ak::file

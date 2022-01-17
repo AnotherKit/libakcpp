@@ -32,31 +32,31 @@ class Validator<std::string> {
   Validator () = delete;
   Validator (const T &value);
 
-  const Validator &toBe (const T &value) const;
-  const Validator &toBeOneOf (const std::initializer_list<T> &list) const;
+  auto toBe (const T &value) const -> const Validator &;
+  auto toBeOneOf (const std::initializer_list<T> &list) const -> const Validator &;
 
-  const Validator &toBeLessThan (const T &value) const;
-  const Validator &toBeGreaterThan (const T &value) const;
+  auto toBeLessThan (const T &value) const -> const Validator &;
+  auto toBeGreaterThan (const T &value) const -> const Validator &;
 
   Validator Not () const;
   Validator butNot () const;
 
   /// expect(std::string("Hello World")).toInclude("Hello")
-  const Validator &toInclude (const std::string &substr) const;
+  auto toInclude (const std::string &substr) const -> const Validator &;
   /// expect(std::string("ababbbbbaaaababab")).toBeConsistedOf("ab")
-  const Validator &toBeConsistedOf (const std::string &chars) const;
+  auto toBeConsistedOf (const std::string &chars) const -> const Validator &;
   /// expect(std::string("Hello World")).toMatch(R"(Hel+o\s\w+)")
-  const Validator &toMatch (const std::regex &pattern) const;
-  const Validator &toMatch (const std::string &pattern) const;
+  auto toMatch (const std::regex &pattern) const -> const Validator &;
+  auto toMatch (const std::string &pattern) const -> const Validator &;
   /// expect(std::string("Hello World")).toPartiallyMatch(R"(Hel+o)")
-  const Validator &toPartiallyMatch (const std::regex &pattern) const;
-  const Validator &toPartiallyMatch (const std::string &pattern) const;
+  auto toPartiallyMatch (const std::regex &pattern) const -> const Validator &;
+  auto toPartiallyMatch (const std::string &pattern) const -> const Validator &;
   /// expect(std::string("Hello World")).toBeOfLength(11);
-  const Validator &toBeOfLength (size_t length) const;
+  auto toBeOfLength (size_t length) const -> const Validator &;
   /// expect(std::string("Hello World")).toBeShorterThan(20)
-  const Validator &toBeShorterThan (size_t length) const;
+  auto toBeShorterThan (size_t length) const -> const Validator &;
   /// expect(std::string("Hello World")).toBeLongerThan(10)
-  const Validator &toBeLongerThan (size_t length) const;
+  auto toBeLongerThan (size_t length) const -> const Validator &;
 };
 
 } // namespace ak::validator::_internals
