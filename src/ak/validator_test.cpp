@@ -1,4 +1,4 @@
-#include "../../include/ak/validator.h"
+#include "ak/validator.h"
 
 #include <string>
 

@@ -13,10 +13,10 @@
 
 #include <initializer_list>
 
-#include "../../base.h"
-#include "../../compare.h"
-#include "../base.h"
-#include "validator.h"
+#include "ak/base.h"
+#include "ak/compare.h"
+#include "ak/validator/base.h"
+#include "ak/validator.h"
 
 namespace ak::validator::_internals {
 

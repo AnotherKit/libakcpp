@@ -13,7 +13,7 @@
 
 namespace ak::chalk {
 
-#include "_internals/chalk.inc"
+#include "ak/_internals/chalk.inc"
 
 } // namespace ak::chalk
 

@@ -1,4 +1,4 @@
-#include "../../include/ak/chalk.h"
+#include "ak/chalk.h"
 
 namespace ak::chalk {
 

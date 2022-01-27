@@ -1,7 +1,7 @@
 #ifndef AK_LIB_VALIDATOR_EXPECT_H_
 #define AK_LIB_VALIDATOR_EXPECT_H_
 
-#include "_internals/validator.h"
+#include "ak/validator/_internals/validator.h"
 
 namespace ak::validator {
 

@@ -17,8 +17,8 @@
 #include <string>
 #include <regex>
 
-#include "../base.h"
-#include "common.h"
+#include "ak/base.h"
+#include "ak/validator/_internals/common.h"
 
 namespace ak::validator::_internals {
 

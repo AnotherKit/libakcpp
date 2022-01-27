@@ -5,8 +5,8 @@
 
 #include <algorithm>
 
-#include "../base.h"
-#include "../compare.h"
+#include "ak/base.h"
+#include "ak/compare.h"
 
 // FIXME: remove dupe code of Set and Array. does C++ support mixins?
 namespace ak::file {

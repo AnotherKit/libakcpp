@@ -8,11 +8,11 @@
 #include <optional>
 #include <vector>
 
-#include "../base.h"
-#include "../compare.h"
-#include "array.h"
-#include "file.h"
-#include "set.h"
+#include "ak/base.h"
+#include "ak/compare.h"
+#include "ak/file/array.h"
+#include "ak/file/file.h"
+#include "ak/file/set.h"
 
 #ifdef AK_DEBUG
 #include <iostream>

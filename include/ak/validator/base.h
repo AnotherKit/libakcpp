@@ -9,7 +9,7 @@
 #ifndef AK_LIB_VALIDATOR_BASE_H_
 #define AK_LIB_VALIDATOR_BASE_H_
 
-#include "../base.h"
+#include "ak/base.h"
 
 namespace ak::validator {
 

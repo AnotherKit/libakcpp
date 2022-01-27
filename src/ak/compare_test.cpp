@@ -1,4 +1,4 @@
-#include "../../include/ak/compare.h"
+#include "ak/compare.h"
 
 #include <assert.h>
 

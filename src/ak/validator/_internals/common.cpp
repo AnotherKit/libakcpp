@@ -1,4 +1,4 @@
-#include "../../../../include/ak/validator/_internals/common.h"
+#include "ak/validator/_internals/common.h"
 
 namespace ak::validator::_internals {
 
